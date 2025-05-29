@@ -32,7 +32,10 @@ class FavoritesPresenter {
 
   _removeEventListeners() {
     if (this.favoriteToggleHandler) {
-      document.removeEventListener("favorite:toggle", this.favoriteToggleHandler);
+      document.removeEventListener(
+        "favorite:toggle",
+        this.favoriteToggleHandler
+      );
     }
     if (this.onlineHandler) {
       window.removeEventListener("online", this.onlineHandler);

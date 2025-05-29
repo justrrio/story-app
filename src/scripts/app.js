@@ -124,7 +124,8 @@ class App {
       this._handleRouting();
       this.isRouting = false;
     }
-  }  _handleRouting() {
+  }
+  _handleRouting() {
     try {
       const hash = window.location.hash || "#/";
       console.log("Routing to:", hash);
@@ -136,19 +137,28 @@ class App {
           if (this.currentPresenter === this.addStoryPresenter) {
             this.addStoryPresenter.cleanup();
           }
-          
+
           // Clean up home presenter to prevent duplicate event listeners
-          if (this.currentPresenter === this.homePresenter && typeof this.homePresenter.destroy === 'function') {
+          if (
+            this.currentPresenter === this.homePresenter &&
+            typeof this.homePresenter.destroy === "function"
+          ) {
             this.homePresenter.destroy();
           }
-          
+
           // Clean up story detail presenter
-          if (this.currentPresenter === this.storyDetailPresenter && typeof this.storyDetailPresenter.destroy === 'function') {
+          if (
+            this.currentPresenter === this.storyDetailPresenter &&
+            typeof this.storyDetailPresenter.destroy === "function"
+          ) {
             this.storyDetailPresenter.destroy();
           }
-          
+
           // Clean up favorites presenter
-          if (this.currentPresenter === this.favoritesPresenter && typeof this.favoritesPresenter.destroy === 'function') {
+          if (
+            this.currentPresenter === this.favoritesPresenter &&
+            typeof this.favoritesPresenter.destroy === "function"
+          ) {
             this.favoritesPresenter.destroy();
           }
         } catch (error) {
@@ -192,7 +202,8 @@ class App {
           console.log("Map presenter initialized successfully");
         } catch (error) {
           console.error("Error initializing map presenter:", error);
-        }      } else if (hash === "#/favorites") {
+        }
+      } else if (hash === "#/favorites") {
         // Favorites page - now accessible to both authenticated users and guests
         console.log("Initializing favorites page");
         try {
@@ -201,7 +212,8 @@ class App {
           console.log("Favorites presenter initialized successfully");
         } catch (error) {
           console.error("Error initializing favorites presenter:", error);
-        }      } else if (hash === "#home" || hash === "#/" || hash === "") {
+        }
+      } else if (hash === "#home" || hash === "#/" || hash === "") {
         // Home page - now accessible to both authenticated users and guests
         console.log("Initializing home page");
         this.homePresenter.init();
@@ -230,7 +242,8 @@ class App {
   }
   updateNavbar() {
     const loginLink = document.getElementById("loginLink");
-    const favoritesLink = document.getElementById("favoritesLink");    if (this.model.isLoggedIn()) {
+    const favoritesLink = document.getElementById("favoritesLink");
+    if (this.model.isLoggedIn()) {
       const name = localStorage.getItem("name");
       loginLink.innerHTML = `<i class="fas fa-sign-out-alt"></i> Logout (${name})`;
       loginLink.href = "#/logout";

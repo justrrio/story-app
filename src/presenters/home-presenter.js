@@ -11,7 +11,10 @@ class HomePresenter {
   _attachEventListeners() {
     // Remove existing listener if any
     if (this.favoriteToggleHandler) {
-      document.removeEventListener("favorite:toggle", this.favoriteToggleHandler);
+      document.removeEventListener(
+        "favorite:toggle",
+        this.favoriteToggleHandler
+      );
     }
 
     // Create bound handler to maintain context
@@ -26,7 +29,10 @@ class HomePresenter {
   destroy() {
     // Clean up event listeners when presenter is destroyed
     if (this.favoriteToggleHandler) {
-      document.removeEventListener("favorite:toggle", this.favoriteToggleHandler);
+      document.removeEventListener(
+        "favorite:toggle",
+        this.favoriteToggleHandler
+      );
       this.favoriteToggleHandler = null;
     }
   }
