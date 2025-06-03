@@ -83,46 +83,51 @@ class HomePresenter {
       console.error("Error updating favorite buttons:", error);
     }
   }
-
   async _handleFavoriteToggle(storyId, storyData) {
+    let originalState = false;
+
     try {
       console.log("Toggling favorite for story:", storyId);
 
-      // Check if story is currently favorite
-      const isFavorite = await this.model.isFavorite(storyId);
+      // Check if story is currently favorite and store original state
+      originalState = await this.model.isFavorite(storyId);
 
       let result;
-      if (isFavorite) {
+      if (originalState) {
         // Remove from favorites
         result = await this._removeFavorite(storyId);
-        if (result.success) {
+        if (result && result.success) {
           this.view.updateFavoriteButton(storyId, false);
           const message = result.offline
             ? "Removed from favorites (will sync when online)"
             : "Removed from favorites";
           this.view.showToast(message, "success");
+        } else {
+          // Failed to remove - reset to original state
+          this.view.updateFavoriteButton(storyId, originalState);
+          this.view.showToast("Failed to remove from favorites", "error");
         }
       } else {
         // Add to favorites - need full story data
         const fullStoryData = await this._getFullStoryData(storyId, storyData);
         result = await this._addFavorite(fullStoryData);
-        if (result.success) {
+        if (result && result.success) {
           this.view.updateFavoriteButton(storyId, true);
           const message = result.offline
             ? "Added to favorites (will sync when online)"
             : "Added to favorites";
           this.view.showToast(message, "success");
+        } else {
+          // Failed to add - reset to original state
+          this.view.updateFavoriteButton(storyId, originalState);
+          this.view.showToast("Failed to add to favorites", "error");
         }
-      }
-
-      if (!result.success) {
-        this.view.showToast("Failed to update favorite", "error");
-        // Reset button state
-        this.view.updateFavoriteButton(storyId, isFavorite);
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
       this.view.showToast("Failed to update favorite", "error");
+      // Always reset button state on error
+      this.view.updateFavoriteButton(storyId, originalState);
     }
   }
 

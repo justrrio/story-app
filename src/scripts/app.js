@@ -14,8 +14,7 @@ import NotFoundView from "../views/not-found-view.js";
 import NotificationHelper from "./notification-helper-new.js";
 import { IndexedDBHelper } from "./indexeddb-helper.js";
 
-// Import PWA utilities
-import { registerSW } from "virtual:pwa-register";
+// PWA utilities - we'll register service worker manually
 
 // Import Presenters
 import HomePresenter from "../presenters/home-presenter.js";
@@ -319,29 +318,45 @@ class App {
       console.error("Error initializing PWA features:", error);
     }
   }
-
   registerServiceWorker() {
-    const updateSW = registerSW({
-      onNeedRefresh() {
-        console.log("New version available");
-        // Show update notification
-        document.dispatchEvent(new CustomEvent("sw-update-available"));
-      },
-      onOfflineReady() {
-        console.log("App ready to work offline");
-        // Show offline ready notification
-        document.dispatchEvent(new CustomEvent("sw-offline-ready"));
-      },
-    });
+    // Register service worker manually
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          // Register the service worker from the root path
+          const registration = await navigator.serviceWorker.register(
+            "/sw.js",
+            {
+              scope: "/",
+            }
+          );
+          console.log("ServiceWorker registered successfully:", registration);
 
-    // Listen for update events
-    document.addEventListener("sw-update-available", () => {
-      this.showUpdateAvailable();
-    });
-
-    document.addEventListener("sw-offline-ready", () => {
-      this.showOfflineReady();
-    });
+          // Listen for updates
+          registration.addEventListener("updatefound", () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed") {
+                  if (navigator.serviceWorker.controller) {
+                    // New update available
+                    this.showUpdateAvailable();
+                  } else {
+                    // App is ready to work offline
+                    this.showOfflineReady();
+                    console.log("Content is cached for offline use.");
+                  }
+                }
+              });
+            }
+          });
+        } catch (error) {
+          console.error("ServiceWorker registration failed:", error);
+        }
+      });
+    } else {
+      console.warn("Service workers are not supported in this browser.");
+    }
   }
 
   setupOnlineOfflineListeners() {

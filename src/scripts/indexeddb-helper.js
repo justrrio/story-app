@@ -100,7 +100,6 @@ class IndexedDBHelper {
       console.error("Error deleting story from IndexedDB:", error);
     }
   }
-
   // Favorites operations
   async addToFavorites(story) {
     try {
@@ -113,8 +112,10 @@ class IndexedDBHelper {
 
       await this.db.put("favorites", favoriteStory);
       console.log("Story added to favorites:", story.id);
+      return { success: true };
     } catch (error) {
       console.error("Error adding to favorites:", error);
+      return { success: false, error: error.message };
     }
   }
   async getAllFavorites() {
@@ -145,14 +146,15 @@ class IndexedDBHelper {
   async getFavorites() {
     return this.getAllFavorites();
   }
-
   async removeFromFavorites(id) {
     try {
       if (!this.db) await this.initDB();
       await this.db.delete("favorites", id);
       console.log("Story removed from favorites:", id);
+      return { success: true };
     } catch (error) {
       console.error("Error removing from favorites:", error);
+      return { success: false, error: error.message };
     }
   }
 

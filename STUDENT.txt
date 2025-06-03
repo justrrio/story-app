@@ -78,4 +78,4 @@ This app is ready for deployment to any static hosting service that supports PWA
 - Vercel
 - Firebase Hosting
 
-**Live Demo**: [To be added after deployment]
+**Live Demo**: https://dicoding-story-app-project.netlify.app/#/login

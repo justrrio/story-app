@@ -135,8 +135,19 @@ class FavoritesView {
       }
     });
   }
-
   _handleFavoriteToggle(storyId, btn) {
+    // Prevent multiple clicks while processing
+    if (btn.classList.contains("removing") || btn.disabled) {
+      console.log("Favorite toggle already in progress, ignoring click");
+      return;
+    }
+
+    // Disable button to prevent multiple clicks
+    btn.disabled = true;
+
+    // Store the original button content for potential restoration
+    const originalContent = btn.innerHTML;
+
     // Dispatch custom event to presenter
     const event = new CustomEvent("favorite:toggle", {
       detail: { storyId },
@@ -146,6 +157,17 @@ class FavoritesView {
     // Provide immediate visual feedback
     btn.classList.add("removing");
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    // Add timeout as failsafe to reset button state after 5 seconds
+    setTimeout(() => {
+      if (btn.classList.contains("removing")) {
+        console.warn("Favorite toggle taking too long, resetting button state");
+        btn.classList.remove("removing");
+        btn.disabled = false;
+        // Use the stored original content instead of a template string
+        btn.innerHTML = `<i class="fas fa-heart" id="heart-${storyId}"></i>`;
+      }
+    }, 5000); // Reduced to 5 seconds for better user experience
   }
 
   _handleViewStory(storyId) {
@@ -267,6 +289,19 @@ class FavoritesView {
           }
         }
       }, 300);
+    }
+  }
+
+  resetFavoriteButton(storyId) {
+    const btn = document.querySelector(
+      `[data-story-id="${storyId}"].favorite-btn`
+    );
+    if (btn) {
+      btn.classList.remove("removing", "loading");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fas fa-heart" id="heart-${storyId}"></i>`;
+      btn.title = "Remove from favorites";
+      btn.classList.add("active");
     }
   }
 

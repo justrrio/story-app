@@ -68,51 +68,120 @@ class StoryDetailPresenter {
       this.view.render({ error: true, message: error.message }, false);
     }
   }
-
   async _updateFavoriteButtonState(storyId) {
     try {
-      const isFavorite = await this.model.isFavorite(storyId);
+      // Add timeout protection
+      const isFavoritePromise = this.model.isFavorite(storyId);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Favorite status check timed out")),
+          3000
+        );
+      });
+
+      // Use Promise.race to prevent hanging
+      const isFavorite = await Promise.race([
+        isFavoritePromise,
+        timeoutPromise,
+      ]).catch((error) => {
+        console.error("Favorite status check failed:", error);
+        return false; // Default to not favorite on error
+      });
+
       this.view.updateFavoriteButton(storyId, isFavorite);
     } catch (error) {
       console.error("Error checking favorite status:", error);
+      // Ensure button is reset even on error
+      this.view.updateFavoriteButton(storyId, false);
     }
   }
-
   async _handleFavoriteToggle(event) {
     const { storyId, storyData } = event.detail;
 
     if (storyId !== this.currentStoryId) return;
 
+    let originalState = false;
+
     try {
-      const isFavorite = await this.model.isFavorite(storyId);
+      // Store original favorite state with timeout protection
+      const isFavoritePromise = this.model.isFavorite(storyId);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Favorite status check timed out")),
+          3000
+        );
+      });
+
+      // Use Promise.race to prevent hanging
+      originalState = await Promise.race([
+        isFavoritePromise,
+        timeoutPromise,
+      ]).catch((error) => {
+        console.error("Favorite status check failed:", error);
+        return false; // Default to not favorite on error
+      });
 
       if (navigator.onLine) {
         // Online: Perform action immediately
-        if (isFavorite) {
-          await this.model.removeFavorite(storyId);
-          this._showToast("Removed from favorites", "success");
+        let success = false;
+
+        if (originalState) {
+          // Remove from favorites
+          const result = await this.model.removeFavorite(storyId);
+          success = result && result.success;
+
+          if (success) {
+            this._showToast("Removed from favorites", "success");
+          } else {
+            this._showToast("Failed to remove from favorites", "error");
+          }
         } else {
-          await this.model.addFavorite(storyData);
-          this._showToast("Added to favorites", "success");
+          // Add to favorites
+          const result = await this.model.addFavorite(storyData);
+          success = result && result.success;
+
+          if (success) {
+            this._showToast("Added to favorites", "success");
+          } else {
+            this._showToast("Failed to add to favorites", "error");
+          }
         }
 
-        // Update button state
-        await this._updateFavoriteButtonState(storyId);
+        // Update button state - if failed, reset to original state
+        if (success) {
+          this.view.updateFavoriteButton(storyId, !originalState);
+        } else {
+          this.view.updateFavoriteButton(storyId, originalState);
+        }
       } else {
         // Offline: Queue action
         await this._queueOfflineAction(
-          isFavorite ? "remove" : "add",
+          originalState ? "remove" : "add",
           storyId,
           storyData
         );
         this._showToast("Action queued for when you're back online", "info");
 
         // Update UI optimistically
-        this.view.updateFavoriteButton(storyId, !isFavorite);
+        this.view.updateFavoriteButton(storyId, !originalState);
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
       this._showToast("Failed to update favorite", "error");
+
+      // Always ensure button is reset to a valid state, even if we don't know the original state
+      this.view.updateFavoriteButton(storyId, originalState);
+    } finally {
+      // Make sure button is always reset from loading state
+      if (!this.view.updateFavoriteButton) {
+        const btn = document.querySelector(
+          `[data-story-id="${storyId}"].favorite-btn`
+        );
+        if (btn) {
+          btn.classList.remove("loading");
+          btn.disabled = false;
+        }
+      }
     }
   }
 

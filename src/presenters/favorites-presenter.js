@@ -72,7 +72,6 @@ class FavoritesPresenter {
       this.view.showError("Failed to load favorites. Please try again.");
     }
   }
-
   async _handleFavoriteToggle(storyId) {
     try {
       console.log("Toggling favorite for story:", storyId);
@@ -82,18 +81,39 @@ class FavoritesPresenter {
 
       if (isFavorited) {
         // Remove from favorites
-        await this._removeFavorite(storyId);
+        const result = await this._removeFavorite(storyId);
+        if (!result || !result.success) {
+          // If removal failed, reset button and show error
+          this.view.resetFavoriteButton(storyId);
+          this.view.showToast("Failed to remove from favorites", "error");
+        }
       } else {
         // This shouldn't happen in favorites page, but handle anyway
         console.warn("Story not in favorites list, cannot remove");
         this.view.showToast("Story not found in favorites", "error");
+
+        // Reset button using the dedicated method
+        this.view.resetFavoriteButton(storyId);
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
       this.view.showToast("Failed to update favorite", "error");
+
+      // Use the dedicated method to reset button state
+      this.view.resetFavoriteButton(storyId);
+    } finally {
+      // Additional safety check - if resetFavoriteButton doesn't exist or fails
+      // This ensures the button is never left in a loading state
+      const btn = document.querySelector(
+        `[data-story-id="${storyId}"].favorite-btn`
+      );
+      if (btn && (btn.classList.contains("removing") || btn.disabled)) {
+        btn.classList.remove("removing", "loading");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fas fa-heart" id="heart-${storyId}"></i>`;
+      }
     }
   }
-
   async _removeFavorite(storyId) {
     try {
       // If offline, queue the action
@@ -111,9 +131,13 @@ class FavoritesPresenter {
 
       // Update view
       this.view.removeFavoriteFromView(storyId);
+
+      // Return success result
+      return { success: true, offline: !navigator.onLine };
     } catch (error) {
       console.error("Error removing favorite:", error);
       this.view.showToast("Failed to remove favorite", "error");
+      return { success: false, error: error.message };
     }
   }
 

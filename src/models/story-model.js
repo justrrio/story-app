@@ -8,7 +8,7 @@ class StoryModel {
   }
   async register(name, email, password) {
     try {
-      // Validate input before sending to API
+      // Immediate validation to avoid unnecessary API calls
       if (!name || !email || !password) {
         return {
           error: true,
@@ -29,53 +29,66 @@ class StoryModel {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
-          email,
-          password,
+          name: name.trim(),
+          email: email.trim(),
+          password: password.trim(),
         }),
       });
 
       const data = await response.json();
 
-      // Log response for debugging
       if (data.error) {
-        console.warn("Registration API error:", data.message);
+        console.warn("Registration failed:", data.message);
+      } else {
+        console.log("Registration successful");
       }
 
       return data;
     } catch (error) {
-      throw new Error(`Failed to register: ${error.message}`);
+      console.error("Registration network error:", error);
+      throw new Error(`Network error: ${error.message}`);
     }
   }
   async login(email, password) {
     try {
+      // Immediate validation to avoid unnecessary API calls
+      if (!email || !password) {
+        return {
+          error: true,
+          message: "Email and password are required",
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          password,
+          email: email.trim(),
+          password: password.trim(),
         }),
       });
 
       const data = await response.json();
 
-      if (!data.error) {
-        // Save login data in local storage
-        localStorage.setItem("token", data.loginResult.token);
-        localStorage.setItem("userId", data.loginResult.userId);
-        localStorage.setItem("name", data.loginResult.name);
-        this.token = data.loginResult.token;
+      if (!data.error && data.loginResult) {
+        // Save login data immediately
+        const { token, userId, name } = data.loginResult;
+        localStorage.setItem("token", token);
+        localStorage.setItem("userId", userId);
+        localStorage.setItem("name", name);
+        this.token = token;
+
+        console.log("Login successful for:", name);
       } else {
-        // Log error details for debugging
-        console.warn("Login API error:", data.message);
+        console.warn("Login failed:", data.message);
       }
 
       return data;
     } catch (error) {
-      throw new Error(`Failed to login: ${error.message}`);
+      console.error("Login network error:", error);
+      throw new Error(`Network error: ${error.message}`);
     }
   }
 
@@ -435,22 +448,78 @@ class StoryModel {
       return false;
     }
   }
-
-  // Favorites management
+  // Favorites management with timeout protection
   async addToFavorites(story) {
-    return await this.dbHelper.addToFavorites(story);
+    try {
+      // Use Promise.race to add timeout protection (3 seconds)
+      return await Promise.race([
+        this.dbHelper.addToFavorites(story),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Favorite operation timed out")),
+            3000
+          )
+        ),
+      ]);
+    } catch (error) {
+      console.error("Error adding to favorites:", error);
+      return { success: false, error: error.message };
+    }
   }
 
   async removeFromFavorites(storyId) {
-    return await this.dbHelper.removeFromFavorites(storyId);
+    try {
+      // Use Promise.race to add timeout protection (3 seconds)
+      return await Promise.race([
+        this.dbHelper.removeFromFavorites(storyId),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Favorite operation timed out")),
+            3000
+          )
+        ),
+      ]);
+    } catch (error) {
+      console.error("Error removing from favorites:", error);
+      return { success: false, error: error.message };
+    }
   }
 
   async getFavorites() {
-    return await this.dbHelper.getAllFavorites();
+    try {
+      // Use Promise.race to add timeout protection (5 seconds)
+      return await Promise.race([
+        this.dbHelper.getAllFavorites(),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Get favorites operation timed out")),
+            5000
+          )
+        ),
+      ]);
+    } catch (error) {
+      console.error("Error getting favorites:", error);
+      return [];
+    }
   }
+
   async isFavorite(storyId) {
-    const favorite = await this.dbHelper.getFavoriteById(storyId);
-    return !!favorite;
+    try {
+      // Use Promise.race to add timeout protection (3 seconds)
+      const favorite = await Promise.race([
+        this.dbHelper.getFavoriteById(storyId),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Check favorite status timed out")),
+            3000
+          )
+        ),
+      ]);
+      return !!favorite;
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+      return false;
+    }
   }
 
   // Guest story management

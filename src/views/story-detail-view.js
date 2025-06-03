@@ -76,12 +76,28 @@ class StoryDetailView {
     // Set up favorite button event listener
     this._setupFavoriteButton(story);
   }
-
   _setupFavoriteButton(story) {
     const favoriteBtn = document.querySelector(`[data-story-id="${story.id}"]`);
     if (favoriteBtn) {
       favoriteBtn.addEventListener("click", (e) => {
         e.preventDefault();
+
+        // Prevent multiple clicks while processing
+        if (favoriteBtn.classList.contains("loading") || favoriteBtn.disabled) {
+          console.log("Favorite toggle already in progress, ignoring click");
+          return;
+        }
+
+        // Store button's original state
+        const icon = favoriteBtn.querySelector("i");
+        const originalClass = icon.className;
+        const originalContent = favoriteBtn.innerHTML;
+
+        // Add loading state and disable button
+        favoriteBtn.classList.add("loading");
+        favoriteBtn.disabled = true;
+        icon.className = "fas fa-spinner fa-spin";
+
         const event = new CustomEvent("favorite:toggle", {
           detail: {
             storyId: story.id,
@@ -89,15 +105,31 @@ class StoryDetailView {
           },
         });
         document.dispatchEvent(event);
+
+        // Add timeout as failsafe to reset button state
+        setTimeout(() => {
+          if (favoriteBtn.classList.contains("loading")) {
+            console.warn(
+              "Favorite toggle taking too long, resetting button state"
+            );
+            favoriteBtn.classList.remove("loading");
+            favoriteBtn.disabled = false;
+            // Use the stored original content instead of just the class
+            favoriteBtn.innerHTML = originalContent;
+          }
+        }, 5000); // Reduced to 5-second timeout for better UX
       });
     }
   }
-
   updateFavoriteButton(storyId, isFavorite) {
     const icon = document.getElementById(`favorite-icon-${storyId}`);
     const btn = document.querySelector(`[data-story-id="${storyId}"]`);
 
     if (icon && btn) {
+      // Remove loading state and re-enable button
+      btn.classList.remove("loading");
+      btn.disabled = false;
+
       if (isFavorite) {
         icon.className = "fas fa-heart";
         btn.classList.add("active");

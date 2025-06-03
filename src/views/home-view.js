@@ -97,11 +97,24 @@ class HomeView {
       });
     }
   }
-
   _handleFavoriteToggle(storyId, btn) {
+    // Prevent multiple clicks while processing
+    if (btn.classList.contains("loading") || btn.disabled) {
+      console.log("Favorite toggle already in progress, ignoring click");
+      return;
+    }
+
     // Get story data from the card
     const storyCard = btn.closest(".story-card");
     const storyData = this._extractStoryDataFromCard(storyCard);
+
+    // Store original button content for reliable restoration
+    const originalContent = btn.innerHTML;
+    const icon = btn.querySelector("i");
+    const originalClass = icon.className;
+
+    // Disable button to prevent multiple clicks
+    btn.disabled = true;
 
     // Dispatch custom event to presenter
     const event = new CustomEvent("favorite:toggle", {
@@ -110,9 +123,19 @@ class HomeView {
     document.dispatchEvent(event);
 
     // Provide immediate visual feedback
-    const icon = btn.querySelector("i");
     btn.classList.add("loading");
     icon.className = "fas fa-spinner fa-spin";
+
+    // Add timeout as failsafe to reset button state
+    setTimeout(() => {
+      if (btn.classList.contains("loading")) {
+        console.warn("Favorite toggle taking too long, resetting button state");
+        btn.classList.remove("loading");
+        btn.disabled = false;
+        // Use the stored original content instead of assuming a default state
+        btn.innerHTML = originalContent;
+      }
+    }, 5000); // Reduced to 5-second timeout for better UX
   }
 
   _extractStoryDataFromCard(storyCard) {
@@ -135,7 +158,10 @@ class HomeView {
     const icon = document.getElementById(`heart-${storyId}`);
 
     if (btn && icon) {
+      // Remove loading state and re-enable button
       btn.classList.remove("loading");
+      btn.disabled = false;
+
       if (isFavorite) {
         icon.className = "fas fa-heart";
         btn.classList.add("favorited");

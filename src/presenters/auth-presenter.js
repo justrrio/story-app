@@ -29,117 +29,86 @@ class AuthPresenter {
     document.addEventListener("auth:login", async (event) => {
       try {
         const { email, password } = event.detail;
+
+        // Quick validation before API call
+        if (!email || !password) {
+          this.view.showAuthResult(
+            { error: true, message: "Email and password are required" },
+            "login"
+          );
+          return;
+        }
+
+        // Make API call immediately without delays
         const result = await this.model.login(email, password);
 
-        // Make sure login view is rendered and retry if not
-        let retryCount = 0;
-        const maxRetries = 3;
-        let formRendered = this.ensureFormRendered("login");
+        // Show result immediately
+        this.view.showAuthResult(result, "login");
 
-        const processResult = () => {
-          if (formRendered) {
-            this.view.showAuthResult(result, "login");
+        if (!result.error) {
+          // Update UI immediately
+          this._updateNavbar();
 
-            if (!result.error) {
-              // Update UI based on login status
-              this._updateNavbar();
-            }
-          } else if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(
-              `Retrying to render login form (attempt ${retryCount})`
-            );
-            setTimeout(() => {
-              formRendered = this.ensureFormRendered("login");
-              processResult();
-            }, 200);
-          } else {
-            console.error(
-              "Failed to render login form after multiple attempts"
-            );
-            // Fallback to redirect
-            if (!result.error) {
-              window.location.hash = "#/";
-            }
-          }
-        };
-
-        // Start processing with small delay to ensure DOM update
-        setTimeout(processResult, 100);
+          // Dispatch user logged in event immediately
+          document.dispatchEvent(new CustomEvent("user:loggedIn"));
+        }
       } catch (error) {
         console.error("Login error:", error);
 
-        // Make sure login view is rendered
-        const formRendered = this.ensureFormRendered("login");
-
-        // Process with small timeout
-        setTimeout(() => {
-          if (formRendered) {
-            this.view.showAuthResult(
-              { error: true, message: error.message },
-              "login"
-            );
-          } else {
-            console.error("Failed to render login form to show error");
-            alert(`Login error: ${error.message}`);
-          }
-        }, 100);
+        // Show error result immediately
+        this.view.showAuthResult(
+          {
+            error: true,
+            message: error.message || "Login failed. Please try again.",
+          },
+          "login"
+        );
       }
     });
+
     document.addEventListener("auth:register", async (event) => {
       try {
         const { name, email, password } = event.detail;
+
+        // Quick validation before API call
+        if (!name || !email || !password) {
+          this.view.showAuthResult(
+            { error: true, message: "All fields are required" },
+            "register"
+          );
+          return;
+        }
+
+        if (password.length < 8) {
+          this.view.showAuthResult(
+            {
+              error: true,
+              message: "Password must be at least 8 characters long",
+            },
+            "register"
+          );
+          return;
+        }
+
+        // Make API call immediately without delays
         const result = await this.model.register(name, email, password);
 
-        // Make sure register view is rendered and retry if not
-        let retryCount = 0;
-        const maxRetries = 3;
-        let formRendered = this.ensureFormRendered("register");
+        // Show result immediately
+        this.view.showAuthResult(result, "register");
 
-        const processResult = () => {
-          if (formRendered) {
-            this.view.showAuthResult(result, "register");
-          } else if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(
-              `Retrying to render register form (attempt ${retryCount})`
-            );
-            setTimeout(() => {
-              formRendered = this.ensureFormRendered("register");
-              processResult();
-            }, 200);
-          } else {
-            console.error(
-              "Failed to render register form after multiple attempts"
-            );
-            // Fallback to show message
-            if (!result.error) {
-              alert("Registration successful! Please log in.");
-              window.location.hash = "#/login";
-            }
-          }
-        };
-
-        // Start processing with small delay to ensure DOM update
-        setTimeout(processResult, 100);
+        // No additional processing needed for successful registration
+        // Redirect will be handled by showAuthResult method
       } catch (error) {
         console.error("Registration error:", error);
 
-        // Make sure register view is rendered
-        const formRendered = this.ensureFormRendered("register");
-
-        // Process with small timeout
-        setTimeout(() => {
-          if (formRendered) {
-            this.view.showAuthResult(
-              { error: true, message: error.message },
-              "register"
-            );
-          } else {
-            console.error("Failed to render register form to show error");
-            alert(`Registration error: ${error.message}`);
-          }
-        }, 100);
+        // Show error result immediately
+        this.view.showAuthResult(
+          {
+            error: true,
+            message: error.message || "Registration failed. Please try again.",
+          },
+          "register"
+        );
       }
     });
   }
